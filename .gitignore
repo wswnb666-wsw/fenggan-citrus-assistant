@@ -1,0 +1,25 @@
+# 依赖与敏感文件（绝不提交）
+.env
+.env.*
+*.key
+*.pem
+**/credentials*
+**/secrets*
+__pycache__/
+*.pyc
+.workbuddy/
+.venv/
+venv/
+
+# 临时与本地文件
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+~$*
+
+# 大体积素材（知识库源稿与历史备份不进仓库）
+知识库素材/
+备份_工作流/
+*.zip
+*.xlsx
