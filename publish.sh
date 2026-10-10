@@ -25,8 +25,10 @@ if [ -z "$TOKEN" ]; then
   exit 1
 fi
 
-export HTTPS_PROXY="${HTTPS_PROXY:-http://127.0.0.1:7897}"
-export HTTP_PROXY="${HTTP_PROXY:-http://127.0.0.1:7897}"
+# 🔴 宿主 shell 会注入自己的代理（如 http://127.0.0.1:50183，连不上 GitHub）——
+#    这里必须【无条件覆盖】成 Clash 端口；写 "${HTTPS_PROXY:-7897}" 会被注入值顶掉（10-10 踩过）。
+export HTTPS_PROXY="http://127.0.0.1:7897"
+export HTTP_PROXY="http://127.0.0.1:7897"
 export GIT_TERMINAL_PROMPT=0
 
 # ---------- 1) 尝试从 Dify 导出最新 DSL ----------
