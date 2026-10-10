@@ -60,8 +60,9 @@ try:
     if not y or len(y) < 1000:
         sys.exit(1)
 
-    # 🔴 脱敏：X-Internal-Token 的真实取值绝不进公开仓库
-    y, n = re.subn(r"(X-Internal-Token:\s*)([A-Za-z0-9._\-]{16,})", r"\1<YOUR-INTERNAL-TOKEN>", y)
+    # 🔴 脱敏：X-Internal-Token 的真实取值绝不进公开仓库（覆盖 YAML / JSON / 等号 三种写法）
+    _pat = r"""(X-Internal-Token["']?[ \t]*[:=][ \t]*["']?)([0-9A-Za-z._\-]{16,})"""
+    y, n = re.subn(_pat, r"\1<YOUR-INTERNAL-TOKEN>", y)
 
     pub = d.api_json("/console/api/apps/%s/workflows/publish" % APP)[1]
     ver = pub.get("version_number")
@@ -82,8 +83,16 @@ else
   echo "[1/3] 跳过导出（未找到 Python 环境）"
 fi
 
-# ---------- 1.5) 脱敏闸门（提交前再扫一遍：任何非占位符的 X-Internal-Token 值都不得进仓库） ----------
-if grep -rnE 'X-Internal-Token:[[:space:]]*[0-9a-zA-Z._-]{16,}' . --exclude-dir=.git --exclude=publish.sh 2>/dev/null; then
+# ---------- 1.5) 脱敏闸门（提交前再扫一遍：非占位符的 X-Internal-Token 值不得进仓库；覆盖 YAML/JSON/等号，fail-closed） ----------
+#   ① 多格式：Token 后允许引号/空格再接 冒号或等号；② grep 自身出错（rc≥2）也一律中止，绝不静默放行
+_gate_pat="X-Internal-Token[[:space:]]*[\"']?[[:space:]]*[:=][[:space:]]*[\"']?[0-9A-Za-z._-]{16,}"
+_gate_hits=$(grep -rnE "$_gate_pat" . --exclude-dir=.git --exclude=publish.sh 2>/dev/null) || _gate_rc=$?
+if [ "${_gate_rc:-0}" -ge 2 ]; then
+  echo "      ⛔ 脱敏闸门自身执行失败（grep rc=${_gate_rc}）—— 已中止提交与推送！"
+  exit 1
+fi
+if [ -n "$_gate_hits" ]; then
+  echo "$_gate_hits"
   echo "      ⛔ 检出未脱敏的 X-Internal-Token 值 —— 已中止提交与推送！"
   exit 1
 fi
