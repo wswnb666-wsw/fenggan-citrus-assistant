@@ -7,11 +7,11 @@
 **/secrets*
 __pycache__/
 *.pyc
-.workbuddy/
 .venv/
 venv/
 
 # 临时与本地文件
+_export_local.sh
 *.log
 *.tmp
 .DS_Store

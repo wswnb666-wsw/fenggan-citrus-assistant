@@ -1,18 +1,17 @@
 #!/usr/bin/env bash
-# 把「丰柑智农助手」最新工作流同步到 GitHub。
+# 把本仓库的工作流 DSL 与文档同步到 GitHub。
 #
 # 用法：
 #   bash publish.sh <github_token> ["提交说明"]
 #
 # 做三件事：
-#   1) 从 Dify 导出**当前已发布版本**的 DSL → workflow/fenggan-workflow-v<版本号>.yml
-#      · 按线上 version_number 自动命名；其余旧版本文件自动清理（git 历史里仍保留）
-#      · 自动把 X-Internal-Token 的真实取值替换为 <YOUR-INTERNAL-TOKEN>（公开仓库绝不带真密钥）
-#      · 依赖本机已登录 Dify 的 Chrome/CDP 会话；取不到就跳过导出，继续用现有 DSL 文件
+#   1) （可选）从 Dify 导出当前已发布版本的 DSL → workflow/fenggan-workflow-v<版本号>.yml。
+#      导出逻辑放在本地脚本 _export_local.sh 里（该文件不随仓库公开；不存在时自动跳过，
+#      直接使用仓库内现有 DSL 文件）。
 #   2) git add / commit（无变化则跳过）
 #   3) git push 到 origin（token 只在本次命令里用，不写入 git 配置）
 #
-# ⚠️ token 用完请在 https://github.com/settings/tokens 撤销。
+# 注意：token 用完请在 https://github.com/settings/tokens 撤销。
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -25,78 +24,33 @@ if [ -z "$TOKEN" ]; then
   exit 1
 fi
 
-# 🔴 宿主 shell 会注入自己的代理（如 http://127.0.0.1:50183，连不上 GitHub）——
-#    这里必须【无条件覆盖】成 Clash 端口；写 "${HTTPS_PROXY:-7897}" 会被注入值顶掉（10-10 踩过）。
+# 本机访问 GitHub 走本地代理（按需改成你自己的代理端口）
 export HTTPS_PROXY="http://127.0.0.1:7897"
 export HTTP_PROXY="http://127.0.0.1:7897"
 export GIT_TERMINAL_PROMPT=0
 
-# ---------- 1) 尝试从 Dify 导出最新 DSL ----------
-PY="C:/Users/MR/.workbuddy/binaries/python/envs/default/Scripts/python.exe"
-if [ -x "$PY" ]; then
-  echo "[1/3] 尝试从 Dify 导出最新 DSL …"
-  "$PY" - <<'PYEOF' || echo "      （导出跳过：Dify 会话不可用，继续用现有 DSL 文件）"
-import glob
-import json
-import os
-import re
-import sys
-
-sys.path.insert(0, r"C:/Users/MR/.workbuddy/skills/dify-console-automation/scripts")
-from dify_api import Dify
-
-APP = "77e5061a-78c6-4d80-b210-06c56caa5f05"
-d = Dify(url_substr="cloud.dify.ai")
-d.ws.settimeout(300)
-try:
-    st, r = d.api("/console/api/apps/%s/export?include_secret=false" % APP, "GET")
-    if st != 200:
-        sys.exit(1)
-    try:
-        j = json.loads(r)
-        y = j.get("data") if isinstance(j, dict) else None
-    except Exception:
-        y = r
-    if not y or len(y) < 1000:
-        sys.exit(1)
-
-    # 🔴 脱敏：X-Internal-Token 的真实取值绝不进公开仓库（覆盖 YAML / JSON / 等号 三种写法）
-    _pat = r"""(X-Internal-Token["']?[ \t]*[:=][ \t]*["']?)([0-9A-Za-z._\-]{16,})"""
-    y, n = re.subn(_pat, r"\1<YOUR-INTERNAL-TOKEN>", y)
-
-    pub = d.api_json("/console/api/apps/%s/workflows/publish" % APP)[1]
-    ver = pub.get("version_number")
-    if not ver:
-        sys.exit(1)
-    fn = "workflow/fenggan-workflow-v%s.yml" % ver
-    for old in glob.glob("workflow/fenggan-workflow-v*.yml"):
-        if os.path.abspath(old) != os.path.abspath(fn):
-            os.remove(old)
-            print("      已移除旧文件:", old)
-    open(fn, "w", encoding="utf-8").write(y)
-    print("      已导出 %d 字节 → %s（脱敏 %d 处）；线上 version_number=%s hash=%s"
-          % (len(y.encode("utf-8")), fn, n, ver, str(pub.get("hash"))[:16]))
-finally:
-    d.close()
-PYEOF
+# ---------- 1) 可选：本地导出最新 DSL ----------
+if [ -f "./_export_local.sh" ]; then
+  echo "[1/3] 尝试导出最新 DSL …"
+  bash "./_export_local.sh" || echo "      （导出跳过：本地导出工具不可用，继续用仓库内现有 DSL 文件）"
 else
-  echo "[1/3] 跳过导出（未找到 Python 环境）"
+  echo "[1/3] 跳过导出（未配置本地导出工具，直接使用仓库内现有 DSL 文件）"
 fi
 
 # ---------- 1.5) 脱敏闸门（提交前再扫一遍：非占位符的 X-Internal-Token 值不得进仓库；覆盖 YAML/JSON/等号，fail-closed） ----------
-#   ① 多格式：Token 后允许引号/空格再接 冒号或等号；② grep 自身出错（rc≥2）也一律中止，绝不静默放行
+#   ① 多格式：Token 后允许引号/空格再接 冒号或等号；② grep 自身出错（rc>=2）也一律中止，绝不静默放行
 _gate_pat="X-Internal-Token[[:space:]]*[\"']?[[:space:]]*[:=][[:space:]]*[\"']?[0-9A-Za-z._-]{16,}"
-_gate_hits=$(grep -rnE "$_gate_pat" . --exclude-dir=.git --exclude=publish.sh 2>/dev/null) || _gate_rc=$?
+_gate_hits=$(grep -rnE "$_gate_pat" . --exclude-dir=.git --exclude=publish.sh --exclude=_export_local.sh 2>/dev/null) || _gate_rc=$?
 if [ "${_gate_rc:-0}" -ge 2 ]; then
-  echo "      ⛔ 脱敏闸门自身执行失败（grep rc=${_gate_rc}）—— 已中止提交与推送！"
+  echo "      【中止】脱敏闸门自身执行失败（grep rc=${_gate_rc}）—— 已中止提交与推送！"
   exit 1
 fi
 if [ -n "$_gate_hits" ]; then
   echo "$_gate_hits"
-  echo "      ⛔ 检出未脱敏的 X-Internal-Token 值 —— 已中止提交与推送！"
+  echo "      【中止】检出未脱敏的 X-Internal-Token 值 —— 已中止提交与推送！"
   exit 1
 fi
-echo "      [1.5] 脱敏闸门 ✓（无真实密钥）"
+echo "      [1.5] 脱敏闸门通过（无真实密钥）"
 
 # ---------- 2) 提交 ----------
 echo "[2/3] 提交改动 …"

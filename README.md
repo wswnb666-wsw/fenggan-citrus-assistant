@@ -10,7 +10,7 @@
 | **可运行程序（在线演示）** | https://udify.app/chat/Xwj7SlLOEdf2ZNlY | 基于 Dify 发布的应用，点开即可对话 |
 | **工作流源码（本仓库）** | 本页 | 工作流 DSL、设计说明、验收记录 |
 
-> ⚠️ 本仓库提供的是**工作流定义（DSL）+ 设计文档**。工作流运行时所依赖的业务数据接口由我们**自建的后端服务**提供（不在本仓库内）；评审老师如需体验完整功能，请使用上表的**在线演示链接**。
+> 注：本仓库提供的是**工作流定义（DSL）+ 设计文档**。工作流运行时所依赖的业务数据接口由我们**自建的后端服务**提供（不在本仓库内）；评审老师如需体验完整功能，请使用上表的**在线演示链接**。
 
 ---
 
@@ -79,12 +79,14 @@
 ```
 .
 ├── README.md                          本文件
+├── LICENSE                            MIT 许可
+├── publish.sh                         维护脚本（可选，见第八节）
 ├── workflow/
 │   └── fenggan-workflow-v100.yml      Dify 工作流 DSL（当前 v100，可直接导入）
 └── docs/
     ├── 01-workflow-overview.md        工作流完整情况说明（架构、模块、接口清单、知识库、测试体系）
-    ├── 02-water-advice-consistency.md 浇水口径收口回报（实时分支与浇水门口径统一的前后对照与验证）
-    └── 03-safety-hardening-regression.md  安全收口与回归回报（安全门禁一批修复的复现、改动与线上回归）
+    ├── 02-water-advice-consistency.md 阶段记录：浇水口径收口（实时分支与浇水门口径统一的前后对照与验证）
+    └── 03-safety-hardening-regression.md  阶段记录：安全收口与回归（一轮安全门禁修复的复现、改动与线上回归）
 ```
 
 ---
@@ -168,8 +170,8 @@
 bash publish.sh <github_token> [提交说明]
 ```
 
-- 脚本会自动从 Dify 导出**当前已发布版本**的 DSL 到 `workflow/fenggan-workflow-v<版本号>.yml`
-  （按线上版本号自动命名、旧版本文件自动清理；导出需要本机已登录 Dify 的浏览器会话；若不可用，脚本会跳过导出、只提交现有文件）；
+- 脚本可选地从 Dify 导出**当前已发布版本**的 DSL 到 `workflow/fenggan-workflow-v<版本号>.yml`
+  （按线上版本号自动命名、旧版本文件自动清理；该导出依赖作者本机的工具配置，公开环境运行时脚本会自动跳过、直接使用仓库内现有 DSL 文件）；
 - 导出时会自动把 `X-Internal-Token` 的真实取值替换为占位符 `<YOUR-INTERNAL-TOKEN>`，**仓库不携带任何真实密钥**；
 - 也可以手动推送：`git add -A && git commit -m "..." && git push`（需要提供凭据，或用 GitHub Desktop 图形客户端）。
 
