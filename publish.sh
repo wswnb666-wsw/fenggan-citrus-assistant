@@ -82,6 +82,13 @@ else
   echo "[1/3] 跳过导出（未找到 Python 环境）"
 fi
 
+# ---------- 1.5) 脱敏闸门（提交前再扫一遍：任何非占位符的 X-Internal-Token 值都不得进仓库） ----------
+if grep -rnE 'X-Internal-Token:[[:space:]]*[0-9a-zA-Z._-]{16,}' . --exclude-dir=.git --exclude=publish.sh 2>/dev/null; then
+  echo "      ⛔ 检出未脱敏的 X-Internal-Token 值 —— 已中止提交与推送！"
+  exit 1
+fi
+echo "      [1.5] 脱敏闸门 ✓（无真实密钥）"
+
 # ---------- 2) 提交 ----------
 echo "[2/3] 提交改动 …"
 git add -A

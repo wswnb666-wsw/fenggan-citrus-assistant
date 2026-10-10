@@ -2071,7 +2071,7 @@ workflow:
         - id: '1789208237477'
           label: 基地与设备信息
           name: 问**基地规模或设备清单**：基地有几块、总面积多少亩、在什么位置，有几台设备、什么类型、装在哪、是否在线。⚠️ 问**某台具体设备**（气象站
-            / 土壤传感器 / 带设备号 GDZS… 的）**是否正常、有没有坏、有没有数据、在不在线**的，也属于本类。
+            / 土壤传感器 / 带设备号 GDZS… 或 3 位短号如 761/771 的）**是否正常、有没有坏、有没有数据、在不在线**的，也属于本类。
         - id: '1789208238084'
           label: 其他或表述不清
           name: 与柑橘种植、本基地的数据/设备/农事都无关的问题；或太笼统无法判断，例如"有没有问题""帮我看看""在吗"。只有确实不属于其他任何一类时才选它。
@@ -2543,8 +2543,9 @@ workflow:
             \ / 气象站 / 传感器是否正常、坏没坏、有没有数据）：本分支**不得**对设备状态或故障作任何判断——不拿读数推断设备\"正常\"，也不对\"\
             设备坏没坏\"下结论（能否\"检查探头\"只以自检结论为准，别自己发挥）；把能答的答了，再补一句\"设备的状态请到设备页查看\"。你自己取不到数据时，必须直说\"\
             这次没拿到数据\"，**不得**改口成\"设备有问题 / 建议检查设备\"——\"我没拿到数据\"≠\"设备有问题\"，是两条不同的归因，不许合并成一句。\n\
-            \n【自检结论（由代码算出，**以此为准**，别自己重新判断设备是否异常）】\n{{#1790330000001.finding#}}\n\
-            （设备自检 checkable={{#1790330000001.checkable#}}、abnormal={{#1790330000001.abnormal#}}，明细：{{#1790330000001.finding#}}\
+            另外：若问的是**某台具体设备**（气象站 / 传感器 / 设备号）的读数或状态，而你的数据里没有**属于这台设备**（按设备号对齐）的记录——不许拿别的设备\
+            \ / 别的探头的读数替它回答，直接说\"我这边没有这台设备的数据\"。\n\n【自检结论（由代码算出，**以此为准**，别自己重新判断设备是否异常）】\n\
+            {{#1790330000001.finding#}}\n（设备自检 checkable={{#1790330000001.checkable#}}、abnormal={{#1790330000001.abnormal#}}，明细：{{#1790330000001.finding#}}\
             \ —— **checkable=0 表示「数据不足、无法判断」**：既不许说设备正常、也不许说异常，只能说「这轮数据不足以判断设备状态」；checkable=1\
             \ 且 abnormal=0 表示代码没有发现设备异常，\n  此时**任何“读数偏低”都不许说成异常或探头故障**；abnormal=1\
             \ 才允许说“先检查探头”。）\n\n（v88 已收口：浇水类结论一律以浇水强度门为准，本节点不自行给浇不浇水的判断。）"
@@ -3629,7 +3630,8 @@ workflow:
 
             　· **设备数量与在线状态一律照抄上面「设备计数」两行**：被问「有几台离线 / 有几台未上报 / 都在线吗」时，直接按那两行回答（每一桶几台、分别是哪些设备号，都是系统数准的）——**不许自己重新数、不许把两个桶合并**。
 
-            　· 被问**某台设备（含设备号）**怎么样：先在设备数据里找到它，**只引用它自己的字段**；找不到这台设备就直说"我这边没有这台设备的数据"。
+            　· 被问**某台设备（含设备号）**怎么样：先在设备数据里找到它，**只引用它自己的字段**；找不到这台设备就直说"我这边没有这台设备的数据"。**"771"这类
+            3 位数字短号 = 设备**（对照设备数据的 id / deviceNum），**不要说成"771号地块"**——本园地块名以「地块清单」那一行为准。
 
             4. 数字带单位（亩、台、℃）。
 
@@ -6314,52 +6316,57 @@ workflow:
           \    # \U0001F534 v99：设备问法（问\"某台设备本身\"，如\"气象站是不是坏了 / GDZS…正常吗\"）确定性走【基地与设备】链\n\
           \    #   （它是唯一有 /ai/data/devices + onlineState 的链）；否则\"气象\"两字会被天气分支抢走，\n\
           \    #   或落到分类器被判成虫情监测（10-10 同学复核实测）。\n    _devq_sub = [s for s in (\"设备\"\
-          , \"气象站\", \"土壤传感器\", \"传感器\", \"GDZS\") if s in q]\n    _devq = (bool(_devq_sub)\n\
-          \             and any(a in q for a in (\"在线\", \"离线\", \"未上报\", \"上报\",\
-          \ \"状态\", \"坏了\", \"故障\",\n                                      \"正常\"\
-          , \"有数据\", \"没数据\", \"在不在\", \"能用\", \"几台\"))\n             and not any(e\
-          \ in q for e in (\"虫情灯\", \"测报灯\", \"虫情设备\", \"杀虫仓\", \"烘干仓\", \"灯管\")))\n\
-          \n    if mp_hit and md_hit:\n        route, hit = \"multi\", \"多意图·虫情+用药决策\"\
-          \n    elif wa_hit and not money_block and not _wn:\n        route, hit =\
-          \ \"water\", \"浇水决策\"\n    elif gen_multi:\n        route, hit = \"multi\"\
-          , \"多意图·\" + \"+\".join(sorted(_dgrp))\n    elif (_pn_ok or _cmp2) and not\
-          \ pdec_hit:\n        route, hit = \"pestnow\", \"虫情·现在/最近\"\n    elif s_hit:\n\
-          \        route, hit = \"symptom\", \"症状类\"\n    elif (_only_pest_q or _only_pest_r)\
-          \ and not pdec_hit:\n        # 2026-09-28：只提了一个病虫名（\"红蜘蛛呢？\"）——这就是在问现状，走虫情现状分支，\n\
-          \        #   别丢给分类器乱判（v74 验收里\"红蜘蛛呢？→ 那个要不要打药？\"这一对的前半句）。\n        route,\
-          \ hit = \"pestnow\", \"虫情·只提病虫名\"\n    elif (past or has_time) and (e_hit\
-          \ or w_hit) and not _devq:\n        route, hit = \"trend\", \"趋势·这段时间\"\
-          \    # \"昨天/前几天/最近N天 + 温度湿度天气\" → 趋势，别答此刻\n    elif w_hit and not _devq:\
-          \                      # 天气类（含\"明天会不会下雨\"）：天气接口已上线，今天 + 未来 12 小时逐小时都有数据\n\
-          \        route, hit = \"weather\", \"天气类\"\n    elif o_sub and o_ask and\
-          \ not o_block and (has_time or past):\n        route, hit = \"trend\", \"\
-          泛问·这几天\"      # 问\"这几天\"→ 走趋势，别答此刻\n    elif has_time and e_hit:\n     \
-          \   route, hit = \"trend\", \"趋势·环境读数\"    # \"这几天温度/湿度怎么样\"→ 趋势，别答此刻\n\
-          \    elif o_sub and o_ask and not o_block:\n        route, hit = \"overview\"\
-          , \"泛问·地里\"\n    elif wa_hit and not money_block:  # 怎么浇/浇多少/几天浇 → 走知识咨询\n\
-          \        route, hit = \"water\", \"浇水类\"\n    elif (md_hit or pdec_hit)\
-          \ and not mp_hit:\n        # 2026-09-28：说了\"要不要打药\"却没点名是哪种病虫 → 交给多意图分支的证据门，\n\
-          \        #   由它确定性给出\"对象不明、不能作为用药依据\"的口径，绝不让分类器自由发挥。\n        route, hit\
-          \ = \"multi\", \"用药决策·对象待确认\"\n    elif sf_hit:\n        route, hit = \"\
-          safety\", \"间隔期/采果安全\"   # 打完药多久能采果 → 用药安全分支\n    elif m_hit:\n        route,\
-          \ hit = \"money\", \"钱类\"\n    elif fm_hit and not y_block:\n        route,\
-          \ hit = \"farm\", \"农事类\"            # 要做什么农事/今天干什么活 → 农事总览(含计划)\n    elif\
-          \ y_hit and not y_block:\n        route, hit = \"yield\", \"产量类\"\n    elif\
-          \ _devq:\n        route, hit = \"plot\", \"设备·状态\"\n    elif p_sub and p_ask\
-          \ and not p_block:\n        route, hit = \"plot\", \"地块/品种\"\n    else:\n\
-          \        route, hit = \"none\", \"-\"\n    return {\n        \"route\":\
-          \ route,\n        \"hit\": hit,\n        \"matched\": \"多意图=%s/%s | 症状=%s\
-          \ | 天气=%s(未来=%s) | 泛问=%s/%s(挡=%s) | 浇水=%s | 钱=%s | 产量=%s(挡=%s) | 安全=%s |\
-          \ 农事=%s | 地块=%s/%s(挡=%s) | 设备=%s\" % (\n            \"/\".join(mp_hit) or\
-          \ \"-\", \"/\".join(md_hit) or \"-\",\n            \"/\".join(s_hit) or\
-          \ \"-\", \"/\".join(w_hit) or \"-\", \"/\".join(fut) or \"-\",\n       \
-          \     \"/\".join(o_sub) or \"-\", \"/\".join(o_ask) or \"-\", \"/\".join(o_block)\
+          , \"气象站\", \"土壤传感器\", \"传感器\", \"GDZS\") if s in q]\n    # \U0001F534 v100：3\
+          \ 位数字短号（761/765/769/770/771）＝ device.id 引用（\"771 正常吗\"实测漏口）\n    _devq_num\
+          \ = bool(_re.search(r\"(?<!\\d)7\\d{2}(?!\\d)\", q))\n    # \U0001F534 v99/v100：主语是设备时，\"\
+          读数类\"问法（温度/湿度/数据/读数/多少…）同样算设备问法\n    #   （\"气象站的温度是多少\"实测漏口 —— 原来会被\"是天气类？\"\
+          截走）\n    _devq = ((bool(_devq_sub) or _devq_num)\n             and any(a\
+          \ in q for a in (\"在线\", \"离线\", \"未上报\", \"上报\", \"状态\", \"坏了\", \"故障\"\
+          , \"正常\",\n                                      \"有数据\", \"没数据\", \"数据\"\
+          , \"读数\", \"数值\", \"温度\", \"湿度\", \"气压\",\n                            \
+          \          \"多少\", \"几度\", \"怎么样\", \"咋样\", \"在不在\", \"能用\", \"几台\"))\n\
+          \             and not any(e in q for e in (\"虫情灯\", \"测报灯\", \"虫情设备\", \"\
+          杀虫仓\", \"烘干仓\", \"灯管\")))\n\n    if mp_hit and md_hit:\n        route, hit\
+          \ = \"multi\", \"多意图·虫情+用药决策\"\n    elif wa_hit and not money_block and\
+          \ not _wn:\n        route, hit = \"water\", \"浇水决策\"\n    elif gen_multi:\n\
+          \        route, hit = \"multi\", \"多意图·\" + \"+\".join(sorted(_dgrp))\n\
+          \    elif (_pn_ok or _cmp2) and not pdec_hit:\n        route, hit = \"pestnow\"\
+          , \"虫情·现在/最近\"\n    elif s_hit:\n        route, hit = \"symptom\", \"症状类\"\
+          \n    elif (_only_pest_q or _only_pest_r) and not pdec_hit:\n        # 2026-09-28：只提了一个病虫名（\"\
+          红蜘蛛呢？\"）——这就是在问现状，走虫情现状分支，\n        #   别丢给分类器乱判（v74 验收里\"红蜘蛛呢？→ 那个要不要打药？\"\
+          这一对的前半句）。\n        route, hit = \"pestnow\", \"虫情·只提病虫名\"\n    elif (past\
+          \ or has_time) and (e_hit or w_hit) and not _devq:\n        route, hit =\
+          \ \"trend\", \"趋势·这段时间\"    # \"昨天/前几天/最近N天 + 温度湿度天气\" → 趋势，别答此刻\n    elif\
+          \ w_hit and not _devq:                      # 天气类（含\"明天会不会下雨\"）：天气接口已上线，今天\
+          \ + 未来 12 小时逐小时都有数据\n        route, hit = \"weather\", \"天气类\"\n    elif\
+          \ o_sub and o_ask and not o_block and (has_time or past):\n        route,\
+          \ hit = \"trend\", \"泛问·这几天\"      # 问\"这几天\"→ 走趋势，别答此刻\n    elif has_time\
+          \ and e_hit:\n        route, hit = \"trend\", \"趋势·环境读数\"    # \"这几天温度/湿度怎么样\"\
+          → 趋势，别答此刻\n    elif o_sub and o_ask and not o_block:\n        route, hit\
+          \ = \"overview\", \"泛问·地里\"\n    elif wa_hit and not money_block:  # 怎么浇/浇多少/几天浇\
+          \ → 走知识咨询\n        route, hit = \"water\", \"浇水类\"\n    elif (md_hit or\
+          \ pdec_hit) and not mp_hit:\n        # 2026-09-28：说了\"要不要打药\"却没点名是哪种病虫 →\
+          \ 交给多意图分支的证据门，\n        #   由它确定性给出\"对象不明、不能作为用药依据\"的口径，绝不让分类器自由发挥。\n  \
+          \      route, hit = \"multi\", \"用药决策·对象待确认\"\n    elif sf_hit:\n      \
+          \  route, hit = \"safety\", \"间隔期/采果安全\"   # 打完药多久能采果 → 用药安全分支\n    elif\
+          \ m_hit:\n        route, hit = \"money\", \"钱类\"\n    elif fm_hit and not\
+          \ y_block:\n        route, hit = \"farm\", \"农事类\"            # 要做什么农事/今天干什么活\
+          \ → 农事总览(含计划)\n    elif y_hit and not y_block:\n        route, hit = \"\
+          yield\", \"产量类\"\n    elif _devq:\n        route, hit = \"plot\", \"设备·状态\"\
+          \n    elif p_sub and p_ask and not p_block:\n        route, hit = \"plot\"\
+          , \"地块/品种\"\n    else:\n        route, hit = \"none\", \"-\"\n    return\
+          \ {\n        \"route\": route,\n        \"hit\": hit,\n        \"matched\"\
+          : \"多意图=%s/%s | 症状=%s | 天气=%s(未来=%s) | 泛问=%s/%s(挡=%s) | 浇水=%s | 钱=%s | 产量=%s(挡=%s)\
+          \ | 安全=%s | 农事=%s | 地块=%s/%s(挡=%s) | 设备=%s\" % (\n            \"/\".join(mp_hit)\
+          \ or \"-\", \"/\".join(md_hit) or \"-\",\n            \"/\".join(s_hit)\
+          \ or \"-\", \"/\".join(w_hit) or \"-\", \"/\".join(fut) or \"-\",\n    \
+          \        \"/\".join(o_sub) or \"-\", \"/\".join(o_ask) or \"-\", \"/\".join(o_block)\
           \ or \"-\",\n            \"/\".join(wa_hit) or \"-\", \"/\".join(m_hit)\
           \ or \"-\",\n            \"/\".join(y_hit) or \"-\", \"/\".join(y_block)\
           \ or \"-\", \"/\".join(sf_hit) or \"-\",\n            \"/\".join(fm_hit)\
           \ or \"-\",\n            \"/\".join(p_sub) or \"-\", \"/\".join(p_ask) or\
-          \ \"-\", \"/\".join(p_block) or \"-\",\n            \"/\".join(_devq_sub)\
-          \ or \"-\"),\n    }\n\n\n# ============================================================================\n\
+          \ \"-\", \"/\".join(p_block) or \"-\",\n            (\"/\".join(_devq_sub)\
+          \ or (\"7xx短号\" if _devq_num else \"-\"))),\n    }\n\n\n# ============================================================================\n\
           # \U0001F534 v92（v91 同分句补测 · 任务单）：**两线判据**，修\"同分句知识词屏蔽执行决策\"。\n#   v91 的问题：分句内只要出现\"\
           特征/识别/怎么\"等知识词就一票否决 ——\n#   「红蜘蛛有哪些特征以及现在能否施药？」这类**同分句混合意图**会被整体屏蔽（实测 A04/A05/A07\
           \ 失败）。\n#   v92 判据（逐分句）：\n#     ① 强决策信号：_A（明确决策词）+ _V（执行动作）→ **判为执行决策，不看知识词**\n\
