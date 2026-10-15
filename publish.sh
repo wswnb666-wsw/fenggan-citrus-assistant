@@ -24,9 +24,12 @@ if [ -z "$TOKEN" ]; then
   exit 1
 fi
 
-# 本机访问 GitHub 走本地代理（按需改成你自己的代理端口）
-export HTTPS_PROXY="http://127.0.0.1:7897"
-export HTTP_PROXY="http://127.0.0.1:7897"
+# 本机访问 GitHub 走本地代理（按需改成你自己的代理端口）。
+# ⚠️ 注意大小写：某些环境会注入小写 http_proxy/https_proxy（内网代理，连不上 GitHub），
+#    git/curl 优先读小写变量 ⇒ 大写小写都要【无条件覆盖】，并用 all_proxy 兜底。
+_PROXY="http://127.0.0.1:7897"
+export HTTPS_PROXY="$_PROXY" HTTP_PROXY="$_PROXY" ALL_PROXY="$_PROXY"
+export https_proxy="$_PROXY" http_proxy="$_PROXY" all_proxy="$_PROXY"
 export GIT_TERMINAL_PROMPT=0
 
 # ---------- 1) 可选：本地导出最新 DSL ----------
