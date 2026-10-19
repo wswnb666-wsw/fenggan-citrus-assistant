@@ -82,7 +82,7 @@
 ├── LICENSE                            MIT 许可
 ├── publish.sh                         维护脚本（可选，见第八节）
 ├── workflow/
-│   └── fenggan-workflow-v113.yml      Dify 工作流 DSL（当前 v113，可直接导入）
+│   └── fenggan-workflow-v116.yml      Dify 工作流 DSL（当前 v116，可直接导入）
 └── docs/
     ├── 01-workflow-overview.md        工作流完整情况说明（架构、模块、接口清单、知识库、测试体系）
     ├── 02-water-advice-consistency.md 阶段记录：浇水口径收口（实时分支与浇水门口径统一的前后对照与验证）
@@ -94,7 +94,7 @@
 ## 四、如何复现（导入 Dify 运行）
 
 1. **准备 Dify**：任意 Dify 1.x 环境（云版或自建）。
-2. **导入工作流**：`工作室 → 创建应用 → 导入 DSL 文件`，选择 `workflow/fenggan-workflow-v113.yml`。
+2. **导入工作流**：`工作室 → 创建应用 → 导入 DSL 文件`，选择 `workflow/fenggan-workflow-v116.yml`。
 3. **配置模型**：工作流内 19 个 LLM 节点统一使用 **DeepSeek-V3**（示例走 `langgenius/siliconflow` 供应商）。
    导入后请在「模型供应商」里配置你自己的 Key，并在各 LLM 节点重新选择模型。
 4. **挂载知识库**：工作流引用 4 个知识库（柑橘知识库 / 病虫害防治 / 科学用药与安全间隔期 / 物候期管理）。
@@ -110,7 +110,7 @@
 
 ## 五、版本与迭代
 
-当前工作流版本 **v113**（累计发布 113 次）。近阶段关键迭代：
+当前工作流版本 **v116**（累计发布 116 次）。近阶段关键迭代：
 
 | 版本 | 解决的问题 |
 |---|---|
